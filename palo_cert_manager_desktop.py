@@ -234,10 +234,19 @@ class CertValidatorApp:
     def download_openssl(self):
         """Pobierz i zainstaluj portable OpenSSL do folderu aplikacji."""
         import os
+        import sys
+        from pathlib import Path
         
-        # Sciezka do folderu openssl w katalogu aplikacji
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        openssl_dir = os.path.join(app_dir, 'openssl')
+        # Okresl wlasciwy folder docelowy
+        if getattr(sys, 'frozen', False):
+            # Aplikacja skompilowana - folder obok .exe
+            app_dir = Path(sys.executable).parent
+            openssl_dir = app_dir / 'openssl'
+            install_target = openssl_dir / 'OpenSSL-Win64'
+        else:
+            # Development - systemowa instalacja
+            openssl_dir = Path.home() / 'Downloads'  # Temp do pobrania
+            install_target = Path('C:/Program Files/OpenSSL-Win64')
         
         # Pokaz komunikat o rozpoczeciu
         self.root.update()
@@ -252,34 +261,72 @@ class CertValidatorApp:
         
         try:
             # Pobierz instalator
-            success, message = self.cert_manager.download_portable_openssl(openssl_dir)
+            success, message = self.cert_manager.download_portable_openssl(str(openssl_dir))
             
             progress_label.destroy()
             
             if success:
-                # Uruchom instalator
-                installer_info = (
-                    "OpenSSL zostal pobrany pomyslnie!\n\n"
-                    "WAZNE INSTRUKCJE:\n\n"
-                    f"1. W instalatorze wybierz folder:\n   {openssl_dir}\n\n"
-                    "2. Zaznacz opcje 'The OpenSSL binaries (/bin) directory'\n\n"
-                    "3. Po instalacji NIE MUSISZ restartowac aplikacji\n\n"
-                    "Czy uruchomic instalator teraz?"
-                )
+                # Pelna sciezka do openssl.exe
+                openssl_exe_path = install_target / 'bin' / 'openssl.exe'
+                
+                # Komunikat z instrukcjami - rozny dla portable i systemowej
+                if getattr(sys, 'frozen', False):
+                    # Wersja portable - zalecany folder lokalny, mozliwy Program Files
+                    installer_info = (
+                        "OpenSSL zostal pobrany pomyslnie!\n\n"
+                        "WAZNE INSTRUKCJE:\n\n"
+                        f"ZALECANE: W instalatorze wybierz folder:\n   {install_target}\n\n"
+                        "ALTERNATYWNIE mozesz zainstalowac w:\n   C:\\Program Files\\OpenSSL-Win64\n\n"
+                        "2. Zaznacz opcje 'The OpenSSL binaries (/bin) directory'\n\n"
+                        "3. Po instalacji NIE MUSISZ restartowac aplikacji\n\n"
+                        "Czy uruchomic instalator teraz?"
+                    )
+                else:
+                    # Wersja development - systemowa instalacja
+                    installer_info = (
+                        "OpenSSL zostal pobrany pomyslnie!\n\n"
+                        "WAZNE INSTRUKCJE:\n\n"
+                        f"1. W instalatorze wybierz folder:\n   {install_target}\n\n"
+                        "2. Zaznacz opcje 'The OpenSSL binaries (/bin) directory'\n\n"
+                        "3. Po instalacji NIE MUSISZ restartowac aplikacji\n\n"
+                        "Czy uruchomic instalator teraz?"
+                    )
+                
                 result = messagebox.askyesno("OpenSSL pobrany", installer_info, icon='info')
                 
                 if result:
                     import subprocess
-                    installer_path = os.path.join(openssl_dir, "openssl_installer.exe")
+                    installer_path = Path(message)  # message zawiera sciezke do instalatora
                     try:
-                        subprocess.Popen([installer_path])
-                        messagebox.showinfo(
+                        # Uruchom instalator i czekaj na zakonczenie
+                        process = subprocess.Popen([str(installer_path)])
+                        
+                        # Pokazujemy informacje o czekaniu
+                        wait_msg = messagebox.showinfo(
                             "Instalator uruchomiony",
-                            "Po zakonczeniu instalacji:\n\n"
-                            "1. Zamknij instalator\n"
-                            "2. Kliknij 'Sprawdz OpenSSL' ponownie\n"
-                            "3. Aplikacja automatycznie wykryje lokalny OpenSSL"
+                            f"Po zakonczeniu instalacji OpenSSL bedzie w:\n{openssl_exe_path}\n\n"
+                            "Kliknij OK po zakonczeniu instalacji.\n"
+                            "Aplikacja automatycznie sprawdzi obecnosc OpenSSL."
                         )
+                        
+                        # Po zamknieciu komunikatu - odswież detekcje OpenSSL
+                        self.cert_manager._find_openssl()
+                        openssl_ok, openssl_msg = self.cert_manager.check_openssl()
+                        
+                        if openssl_ok:
+                            messagebox.showinfo(
+                                "Sukces!", 
+                                f"OpenSSL zostal wykryty!\n\n{openssl_msg}\n\nMozesz teraz uzywac aplikacji."
+                            )
+                            # Odswież status w GUI
+                            self.check_openssl_status()
+                        else:
+                            messagebox.showwarning(
+                                "OpenSSL nie wykryty",
+                                "OpenSSL nie zostal jeszcze wykryty.\n\n"
+                                "Upewnij sie ze instalacja zakonczona prawidlowo\n"
+                                "i kliknij 'Sprawdz OpenSSL' ponownie."
+                            )
                     except Exception as e:
                         messagebox.showerror("Blad", f"Nie mozna uruchomic instalatora:\n{str(e)[:200]}")
             else:

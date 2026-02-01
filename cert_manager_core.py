@@ -109,10 +109,10 @@ class CertificateManager:
         """Pobierz portable wersje OpenSSL
         
         Args:
-            dest_dir: Folder docelowy dla OpenSSL
+            dest_dir: Folder docelowy dla OpenSSL (pobieranie instalatora)
             
         Returns:
-            Krotka (sukces, komunikat)
+            Krotka (sukces, komunikat z pelna sciezka do instalatora)
         """
         try:
             # URL do portable OpenSSL (Light version wystarczy)
@@ -133,7 +133,8 @@ class CertificateManager:
             for url in urls:
                 try:
                     urllib.request.urlretrieve(url, installer_path)
-                    return True, f"Pobrано do: {installer_path}\n\nUruchom instalator i wybierz folder:\n{dest_path}"
+                    # Zwroc sukces - GUI sam ustali docelowy folder
+                    return True, str(installer_path)
                 except urllib.error.HTTPError as e:
                     last_error = f"Blad HTTP {e.code} dla {url}"
                     continue
