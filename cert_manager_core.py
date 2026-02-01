@@ -33,38 +33,17 @@ class CertificateManager:
             app_dir = Path(__file__).parent
         
         # Lista mozliwych sciezek
-        possible_paths = []
-        
-        # Sprawdz czy jestesmy w folderze CertificateValidator_Portable (w gore)
-        current = app_dir
-        while current != current.parent:
-            if current.name == 'CertificateValidator_Portable':
-                # Znalezlismy folder portable - dodaj sciezke do OpenSSL
-                portable_openssl = current / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe'
-                possible_paths.append(portable_openssl)
-                break
-            current = current.parent
-        
-        # Sprawdz w podfolderach (dla wersji dev gdy portable jest w dist/)
-        dist_portable = app_dir / 'dist' / 'CertificateValidator_Portable' / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe'
-        if dist_portable.exists():
-            possible_paths.insert(0, dist_portable)
-        
-        # Dodaj standardowe lokalizacje wzgledem folderu aplikacji
-        possible_paths.extend([
-            # W folderze aplikacji
-            app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
-            app_dir / 'openssl' / 'bin' / 'openssl.exe',
-            app_dir / 'openssl' / 'openssl.exe',
-            
-            # Folder wyzej
-            app_dir.parent / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
-            app_dir.parent / 'openssl' / 'bin' / 'openssl.exe',
-            
-            # Systemowa instalacja
+        possible_paths = [
+            # PRIORYTET: Standardowa systemowa instalacja
             Path('C:/Program Files/OpenSSL-Win64/bin/openssl.exe'),
+            
+            # Portable: folder openssl obok aplikacji
+            app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
+            
+            # Alternatywne lokalizacje
             Path('C:/Program Files (x86)/OpenSSL-Win64/bin/openssl.exe'),
-        ])
+            app_dir / 'openssl' / 'bin' / 'openssl.exe',
+        ]
         
         for openssl_path in possible_paths:
             if openssl_path.exists():

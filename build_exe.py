@@ -39,12 +39,13 @@ def build_exe():
         '--windowed',                       # Bez konsoli (GUI)
         '--clean',                          # Wyczysc cache
         
-        # Ikona (jesli istnieje)
-        # '--icon=icon.ico',
+        # Ikona
+        '--icon=icons/paloalto.ico',
         
         # Dodatkowe pliki
         '--add-data=cert_manager_core.py;.',
         '--add-data=palo_cert_manager_desktop.py;.',
+        '--add-data=icons;icons',
         
         # Ukryte importy
         '--hidden-import=tkinter',
