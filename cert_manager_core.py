@@ -23,27 +23,35 @@ class CertificateManager:
         self._find_openssl()
         
     def _find_openssl(self):
-        """Znajdz OpenSSL - najpierw lokalny, potem systemowy"""
+        """Znajdz OpenSSL - priorytet systemowy, potem portable"""
         # Okresl folder aplikacji
         if getattr(sys, 'frozen', False):
             # Aplikacja skompilowana (PyInstaller)
             app_dir = Path(sys.executable).parent
+            
+            # Lista sciezek w kolejnosci priorytetu
+            possible_paths = [
+                # 1. Systemowa instalacja C:\Program Files
+                Path('C:/Program Files/OpenSSL-Win64/bin/openssl.exe'),
+                Path('C:/Program Files (x86)/OpenSSL-Win64/bin/openssl.exe'),
+                
+                # 2. Portable: openssl\OpenSSL-Win64\bin w root aplikacji
+                app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
+            ]
         else:
-            # Aplikacja uruchamiana ze zrodla
+            # Aplikacja uruchamiana ze zrodla - sprawdz lokalne i systemowe
             app_dir = Path(__file__).parent
-        
-        # Lista mozliwych sciezek
-        possible_paths = [
-            # PRIORYTET: Standardowa systemowa instalacja
-            Path('C:/Program Files/OpenSSL-Win64/bin/openssl.exe'),
-            
-            # Portable: folder openssl obok aplikacji
-            app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
-            
-            # Alternatywne lokalizacje
-            Path('C:/Program Files (x86)/OpenSSL-Win64/bin/openssl.exe'),
-            app_dir / 'openssl' / 'bin' / 'openssl.exe',
-        ]
+            possible_paths = [
+                # PRIORYTET: Standardowa systemowa instalacja
+                Path('C:/Program Files/OpenSSL-Win64/bin/openssl.exe'),
+                
+                # Portable: folder openssl\OpenSSL-Win64\bin obok aplikacji
+                app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe',
+                
+                # Alternatywne lokalizacje
+                Path('C:/Program Files (x86)/OpenSSL-Win64/bin/openssl.exe'),
+                app_dir / 'openssl' / 'bin' / 'openssl.exe',
+            ]
         
         for openssl_path in possible_paths:
             if openssl_path.exists():
@@ -88,6 +96,13 @@ class CertificateManager:
                 return False, "OpenSSL znaleziony ale nie dziala poprawnie"
         except Exception as e:
             self._openssl_available = False
+            
+            # Sugestia dla wersji portable
+            if getattr(sys, 'frozen', False):
+                app_dir = Path(sys.executable).parent
+                suggested_path = app_dir / 'openssl' / 'OpenSSL-Win64' / 'bin' / 'openssl.exe'
+                return False, f"OpenSSL niedostepny. Zainstaluj OpenSSL do:\n{suggested_path}\nlub C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe"
+            
             return False, f"OpenSSL niedostepny"
     
     def download_portable_openssl(self, dest_dir: str) -> tuple[bool, str]:
