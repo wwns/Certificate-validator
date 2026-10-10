@@ -1,1 +1,1 @@
-# Brak zewnetrznych zaleznosci - tylko biblioteki standardowe Python
+Pillow>=9.1
